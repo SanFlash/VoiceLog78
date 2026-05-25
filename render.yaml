@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: ai-conversation-recorder
+    env: python
+    region: oregon
+    buildCommand: |
+      apt-get install -y ffmpeg
+      pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: WHISPER_MODEL
+        value: base
+      # Optional: add HUGGINGFACE_TOKEN for pyannote speaker diarization
+      # - key: HUGGINGFACE_TOKEN
+      #   value: your_token_here
+    disk:
+      name: uploads
+      mountPath: /opt/render/project/src/static/uploads
+      sizeGB: 1

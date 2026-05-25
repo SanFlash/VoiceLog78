@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VoiceLog — AI Conversation Recorder</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="bg-mesh"></div>
+  <nav class="nav">
+    <a href="/" class="nav-logo">
+      <div class="nav-logo-icon">🎙️</div>
+      <span class="nav-logo-text">VoiceLog</span>
+    </a>
+    <a href="/auth/login" class="btn btn-primary btn-sm">Demo Login</a>
+  </nav>
+
+  <section class="home-hero fade-in">
+    <div class="pill-label">✦ AI-Powered · Multi-Speaker · Real-time</div>
+    <h1 class="display">Record.<br><span class="text-teal">Transcribe.</span><br>Understand.</h1>
+    <p class="subtitle mt-4">Capture every conversation with automatic speaker detection, AI transcription, and searchable session management.</p>
+
+    <div class="home-cards">
+      <a href="/auth/login" class="card home-card">
+        <div class="home-card-icon">🖥️</div>
+        <div>
+          <div class="home-card-title">WEB</div>
+          <div class="home-card-desc">Full dashboard experience. Create sessions, manage recordings, and review transcripts from your browser.</div>
+        </div>
+        <div class="home-card-arrow">→</div>
+      </a>
+      <a href="/app-view" class="card home-card">
+        <div class="home-card-icon">📱</div>
+        <div>
+          <div class="home-card-title">APP</div>
+          <div class="home-card-desc">Mobile-first recording interface. Start recording instantly from a phone-like experience.</div>
+        </div>
+        <div class="home-card-arrow">→</div>
+      </a>
+    </div>
+
+    <div class="flex gap-6 mt-8" style="color:var(--text-muted); font-size:0.82rem;">
+      <span>✓ Free &amp; Open Source</span>
+      <span>✓ Runs Locally</span>
+      <span>✓ Render Compatible</span>
+    </div>
+  </section>
+</body>
+</html>

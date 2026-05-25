@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Session — VoiceLog</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="bg-mesh"></div>
+  <nav class="nav">
+    <a href="/" class="nav-logo">
+      <div class="nav-logo-icon">🎙️</div>
+      <span class="nav-logo-text">VoiceLog</span>
+    </a>
+    <a href="/dashboard" class="btn btn-outline btn-sm">← Dashboard</a>
+  </nav>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <span class="sidebar-section-label">Navigation</span>
+      <a href="/dashboard" class="sidebar-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+    </aside>
+    <main class="main-content fade-in">
+      <div id="sessionInfo" style="max-width:700px;">
+        <div class="spinner" style="width:32px;height:32px;"></div>
+      </div>
+    </main>
+  </div>
+  <script>
+    const sessionId = {{ session_id }};
+    async function loadSession() {
+      const res = await fetch(`/sessions/${sessionId}`);
+      const s = await res.json();
+      const el = document.getElementById('sessionInfo');
+      el.innerHTML = `
+        <h1 style="font-size:1.8rem;margin-bottom:0.5rem;">${s.session_name}</h1>
+        <div class="flex gap-4 mb-6">
+          <span class="badge badge-${s.status.toLowerCase().replace(' ','-')}">${s.status}</span>
+          <span class="text-sub text-sm">${s.created_at}</span>
+        </div>
+        <div class="card p-6" style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+          <div><div class="text-muted text-xs mb-1" style="text-transform:uppercase;letter-spacing:.06em;">Interviewer</div><div>${s.interviewer}</div></div>
+          <div><div class="text-muted text-xs mb-1" style="text-transform:uppercase;letter-spacing:.06em;">Time</div><div>${s.time}</div></div>
+          <div style="grid-column:span 2"><div class="text-muted text-xs mb-1" style="text-transform:uppercase;letter-spacing:.06em;">Notes</div><div>${s.notes || '—'}</div></div>
+        </div>
+        <div class="flex gap-4 mt-6">
+          <a href="/dashboard" class="btn btn-outline">← Back</a>
+          <a href="/app-view" class="btn btn-primary">Record Session</a>
+        </div>
+      `;
+    }
+    loadSession();
+  </script>
+</body>
+</html>

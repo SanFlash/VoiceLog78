@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Transcript — VoiceLog</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="bg-mesh"></div>
+  <nav class="nav">
+    <a href="/" class="nav-logo">
+      <div class="nav-logo-icon">🎙️</div>
+      <span class="nav-logo-text">VoiceLog</span>
+    </a>
+    <div class="flex gap-4">
+      <a href="/dashboard" class="btn btn-outline btn-sm">← Dashboard</a>
+    </div>
+  </nav>
+
+  <div class="app-layout">
+    <aside class="sidebar">
+      <span class="sidebar-section-label">Navigation</span>
+      <a href="/dashboard" class="sidebar-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="/app-view" class="sidebar-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.01"/></svg>
+        App Recorder
+      </a>
+    </aside>
+
+    <main class="main-content fade-in">
+      <div id="loadingState" style="text-align:center;padding:4rem;">
+        <div class="spinner" style="width:32px;height:32px;margin:0 auto 1rem;"></div>
+        <div class="text-sub">Loading transcript...</div>
+      </div>
+
+      <div id="processingState" style="display:none;text-align:center;padding:4rem;">
+        <div style="font-size:3rem;margin-bottom:1rem;">⚙️</div>
+        <h2 style="font-size:1.4rem;margin-bottom:0.5rem;">Processing Audio</h2>
+        <p class="text-sub">Transcribing and detecting speakers...</p>
+        <div class="progress-bar-wrap mt-4" style="max-width:300px;margin:1rem auto 0;">
+          <div class="progress-bar" id="processingBar" style="width:40%;"></div>
+        </div>
+        <div style="font-size:0.82rem;color:var(--text-muted);margin-top:1rem;" id="processingStatus">In Progress</div>
+      </div>
+
+      <div id="transcriptContent" style="display:none;">
+        <div class="flex justify-between items-center mb-6">
+          <div>
+            <h1 style="font-size:1.6rem;" id="transcriptTitle">Transcript</h1>
+            <div class="flex gap-4 mt-2" id="transcriptMeta"></div>
+          </div>
+          <div class="flex gap-3">
+            <button class="btn btn-outline btn-sm" onclick="exportTranscript()">Export</button>
+          </div>
+        </div>
+
+        <!-- Speaker Legend -->
+        <div id="speakerLegend" class="flex gap-3 mb-6 flex-wrap"></div>
+
+        <!-- Transcript Bubbles -->
+        <div id="transcriptList" class="transcript-list"></div>
+      </div>
+
+      <div id="errorState" style="display:none;text-align:center;padding:4rem;">
+        <div style="font-size:3rem;margin-bottom:1rem;">❌</div>
+        <h2 style="font-size:1.4rem;">Error Loading Transcript</h2>
+        <p class="text-sub mt-2" id="errorMsg">Something went wrong.</p>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const recordingId = {{ recording_id }};
+    let pollInterval;
+
+    const AVATAR_CLASSES = ['av-1', 'av-2', 'av-3'];
+    const BUBBLE_COLORS = [false, false, false]; // right/left for each speaker
+
+    function formatTime(seconds) {
+      const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+      const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
+    }
+
+    async function loadTranscript() {
+      try {
+        const res = await fetch(`/record/transcript/${recordingId}`);
+        if (!res.ok) throw new Error('Failed to load');
+        const data = await res.json();
+        const rec = data.recording;
+        
+        if (rec.status === 'In Progress' || rec.status === 'Uploaded') {
+          document.getElementById('loadingState').style.display = 'none';
+          document.getElementById('processingState').style.display = 'block';
+          document.getElementById('processingStatus').textContent = rec.status;
+          pollInterval = setTimeout(loadTranscript, 3000);
+          return;
+        }
+        if (rec.status === 'Error') {
+          document.getElementById('loadingState').style.display = 'none';
+          document.getElementById('errorState').style.display = 'block';
+          document.getElementById('errorMsg').textContent = data.transcript || 'Processing error';
+          return;
+        }
+
+        clearTimeout(pollInterval);
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('processingState').style.display = 'none';
+        document.getElementById('transcriptContent').style.display = 'block';
+
+        // Meta
+        const meta = document.getElementById('transcriptMeta');
+        meta.innerHTML = `
+          <span class="badge badge-completed">Completed</span>
+          <span class="text-sub text-sm">${rec.speaker_count} speaker${rec.speaker_count > 1 ? 's' : ''} detected</span>
+          <span class="text-muted text-sm">${rec.created_at}</span>
+        `;
+
+        // Build transcript
+        const transcript = data.transcript;
+        if (!transcript || transcript.length === 0) {
+          document.getElementById('transcriptList').innerHTML = '<div class="empty-state"><div class="icon">📄</div><div>No transcript available</div></div>';
+          return;
+        }
+
+        // Get unique speakers
+        const speakers = [...new Set(transcript.map(t => t.speaker))];
+        const speakerIndex = {};
+        speakers.forEach((s, i) => speakerIndex[s] = i);
+
+        // Speaker legend
+        const legend = document.getElementById('speakerLegend');
+        speakers.forEach((s, i) => {
+          const div = document.createElement('div');
+          div.className = 'flex items-center gap-2';
+          div.innerHTML = `
+            <div class="bubble-avatar ${AVATAR_CLASSES[i % 3]}" style="width:28px;height:28px;font-size:0.65rem;">${s.split(' ').map(w=>w[0]).join('')}</div>
+            <span class="text-sm" style="color:var(--text-sub);">${s}</span>
+          `;
+          legend.appendChild(div);
+        });
+
+        // Render bubbles
+        const list = document.getElementById('transcriptList');
+        transcript.forEach((item, idx) => {
+          const sIdx = speakerIndex[item.speaker] || 0;
+          const isRight = sIdx === 0; // Person 1 on right
+          const row = document.createElement('div');
+          row.className = `bubble-row ${isRight ? 'right' : ''}`;
+          row.innerHTML = `
+            <div class="bubble-avatar ${AVATAR_CLASSES[sIdx % 3]}">${item.speaker.replace('Person ', 'P')}</div>
+            <div class="bubble-content">
+              <div class="bubble-meta">
+                <span>${item.speaker}</span>
+                <span>${formatTime(item.start || 0)}</span>
+              </div>
+              <div class="bubble-text">${item.text}</div>
+            </div>
+          `;
+          list.appendChild(row);
+        });
+
+      } catch (e) {
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('errorState').style.display = 'block';
+        document.getElementById('errorMsg').textContent = e.message;
+      }
+    }
+
+    function exportTranscript() {
+      const items = document.querySelectorAll('.bubble-row');
+      let text = 'VOICELOG TRANSCRIPT\n' + '='.repeat(40) + '\n\n';
+      items.forEach(row => {
+        const speaker = row.querySelector('.bubble-meta span:first-child')?.textContent || '';
+        const time = row.querySelector('.bubble-meta span:last-child')?.textContent || '';
+        const content = row.querySelector('.bubble-text')?.textContent || '';
+        text += `[${time}] ${speaker}:\n${content}\n\n`;
+      });
+      const blob = new Blob([text], {type:'text/plain'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `transcript_${recordingId}.txt`;
+      a.click();
+    }
+
+    loadTranscript();
+  </script>
+</body>
+</html>
